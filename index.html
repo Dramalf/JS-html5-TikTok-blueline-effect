@@ -4,9 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="origin-trial"
+    content="AltVpWljpnBU7ZyBH/JfvKtozJ+A6w/7H9QFX5ZjT3/Pkym4hi5UWGkBLOGo8sn+MCBytfMg+JlYMqsMFdUOJQ8AAABgeyJvcmlnaW4iOiJodHRwOi8vMTI3LjAuMC4xOjMwMDAiLCJmZWF0dXJlIjoiVW5yZXN0cmljdGVkU2hhcmVkQXJyYXlCdWZmZXIiLCJleHBpcnkiOjE2Mzk1MjYzOTl9">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
 
+    <link rel="stylesheet" type="text/css" href="https://cdn.rawgit.com/ConnorAtherton/loaders.css/master/loaders.min.css">
 </head>
 
 <body>
@@ -17,7 +20,18 @@
             <canvas id="canvas" height="480" width="640"></canvas>
         </div>
         <button id="start">start</button>
-        <div>
+        <div >
+            <div id="loading-box" >
+                <div>compositing</div>
+                <div class="line-scale">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                  </div>
+                  <div>wait please</div>
+            </div>
+
             <video id="remote-video" src="" width="240" height="180" controls autoplay></video>
         </div>
     </div>
@@ -65,7 +79,18 @@
             display: block;
             z-index: 100;
         }
-
+        #loading-box{
+            height: 200px;
+            width: 200px;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            /* display: flex; */
+            display: none;
+        }
+        #loading-box > div>div {
+            background-color: rgb(68, 174, 201);
+        }
         #remote-video {
             border: 1px dashed darkslategray;
         }
@@ -83,7 +108,8 @@
     const mask = document.getElementById('mask')
     const localVideo = document.getElementById('local-video')
     const remoteVideo = document.getElementById('remote-video');
-    const canvas = document.getElementById("canvas");
+    const loadingBox=document.getElementById('loading-box')
+    const canvas = document.getElementById('canvas');
     let ffmpeg=null
     let y = 480
     let videoHeight = null,
@@ -99,7 +125,7 @@
 
     async function init() {
         console.log('begin')
-       // await fetchFFmpeg()
+        await fetchFFmpeg()
         console.log('over')
         mediaStream = await navigator.mediaDevices.getUserMedia({
             video: true
@@ -159,26 +185,32 @@
 
     }
 
-    const stopRecord = () => {
+    const stopRecord =async () => {
+        loadingBox.style.display="flex"
         mediaRecorder.stop()
         let blob = new Blob(buffer, {
-            type: 'video/webm'
+            type: 'video/mp4'
         })
+        const { fetchFile } =FFmpeg
+        const video=document.createElement('video')
+        video.height = videoHeight / 2
+        video.width = videoWidth / 2
+        video.src=URL.createObjectURL(blob)
+        await ffmpeg.FS('writeFile', 'res.mp4',await fetchFile(video.src) );
+        await ffmpeg.run('-i','res.mp4','output.mp4')
+        const data = ffmpeg.FS('readFile', 'output.mp4');
         remoteVideo.height = videoHeight / 2
         remoteVideo.width = videoWidth / 2
-        remoteVideo.src = URL.createObjectURL(blob)
+        remoteVideo.src = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }))
         remoteVideo.constrols = true
+        loadingBox.style.display="none"
         remoteVideo.style.display = 'block'
         newone = false
     }
     const fetchFFmpeg = async () => {
         const { createFFmpeg } = FFmpeg
-        ffmpeg = createFFmpeg({
-            //corePath: "../../node_modules/@ffmpeg/core/dist/ffmpeg-core.js",
-
-        });
+        ffmpeg = createFFmpeg({});
         await ffmpeg.load()
-        loadedFFmpeg()
     }
     function drawEffect() {
         const ctx = canvas.getContext('2d')
