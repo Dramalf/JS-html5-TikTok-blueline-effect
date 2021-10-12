@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+</head>
+
+<body>
+    <div class="wrapper">
+        <video id="local-video" src="" width="240" height="180" controls autoplay></video>
+
+        <div id="mask" data-content-before="">
+            <canvas id="canvas" height="480" width="640"></canvas>
+        </div>
+        <button id="start">start</button>
+        <div>
+            <video id="remote-video" src="" width="240" height="180" controls autoplay></video>
+        </div>
+    </div>
+    <style>
+        body {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            text-align: center;
+
+        }
+
+        .wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .player {
+            transform: rotateY(180deg);
+        }
+
+        #mask {
+            position: relative;
+        }
+
+        #start {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            margin: 16px 0;
+        }
+
+        #local-video {
+            display: none;
+        }
+
+        #mask:before {
+            content: attr(data-content-before);
+            position: absolute;
+            top: 0;
+            width: 640px;
+            height: 480px;
+            line-height: 480px;
+            text-align: center;
+            font-size: 200px;
+            color: gold;
+            display: block;
+            z-index: 100;
+        }
+
+        #remote-video {
+            border: 1px dashed darkslategray;
+        }
+
+        #canvas {
+            border: 1px solid salmon;
+        }
+    </style>
+
+</body>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.9.5/dist/ffmpeg.min.js"></script>
+<script>
+
+    const startBtn = document.getElementById('start')
+    const mask = document.getElementById('mask')
+    const localVideo = document.getElementById('local-video')
+    const remoteVideo = document.getElementById('remote-video');
+    const canvas = document.getElementById("canvas");
+    let ffmpeg=null
+    let y = 480
+    let videoHeight = null,
+        videoWidth = null
+    var buffer = []
+    let newone = false
+    let stopEffect = null,
+        stopPreview = null
+    let mediaRecorder, mediaStream
+    const options = {
+        mimeType: 'video/webm;codecs=vp8'
+    }
+
+    async function init() {
+        console.log('begin')
+       // await fetchFFmpeg()
+        console.log('over')
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: true
+        });
+        remoteVideo.style.display = 'none'
+        localVideo.srcObject = mediaStream
+        localVideo.onloadeddata = () => {
+            videoHeight = localVideo.videoHeight
+            videoWidth = localVideo.videoWidth
+            mask.style.height = videoHeight + 'px'
+            mask.style.width = videoWidth + 'px'
+            y = videoHeight
+            canvas.height = videoHeight
+            canvas.width = videoWidth
+            const ctx = canvas.getContext('2d')
+            ctx.translate(canvas.width, 0); //画布翻转
+            ctx.scale(-1, 1)
+            drawPreview()
+        }
+    }
+
+    function drawPreview() {
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(localVideo, 0, 0)
+        stopPreview = window.requestAnimationFrame(drawPreview)
+    }
+    startBtn.onclick = async () => {
+        const canvasStream = canvas.captureStream(30)
+        mediaRecorder = new MediaRecorder(canvasStream, options);
+        mediaRecorder.ondataavailable = (e) => {
+            if (e && e.data && e.data.size > 0) {
+                buffer.push(e.data)
+            }
+        }
+        mediaRecorder.start(30)
+        y = videoHeight
+        buffer = []
+        if (!stopPreview)
+            stopPreview = window.requestAnimationFrame(drawPreview)
+
+        await new Promise((resolve, reject) => {
+            let t = 3
+            mask.attributes[1].value = t ? t : '';
+            let countdown = setInterval(() => {
+                t--
+                mask.attributes[1].value = t ? t : '';
+            }, 1000);
+            setTimeout(() => {
+                window.cancelAnimationFrame(stopPreview)
+                stopPreview = null
+                clearInterval(countdown)
+                resolve()
+            }, 3000);
+        })
+
+        drawEffect()
+
+    }
+
+    const stopRecord = () => {
+        mediaRecorder.stop()
+        let blob = new Blob(buffer, {
+            type: 'video/webm'
+        })
+        remoteVideo.height = videoHeight / 2
+        remoteVideo.width = videoWidth / 2
+        remoteVideo.src = URL.createObjectURL(blob)
+        remoteVideo.constrols = true
+        remoteVideo.style.display = 'block'
+        newone = false
+    }
+    const fetchFFmpeg = async () => {
+        const { createFFmpeg } = FFmpeg
+        ffmpeg = createFFmpeg({
+            //corePath: "../../node_modules/@ffmpeg/core/dist/ffmpeg-core.js",
+
+        });
+        await ffmpeg.load()
+        loadedFFmpeg()
+    }
+    function drawEffect() {
+        const ctx = canvas.getContext('2d')
+        y--
+        ctx.drawImage(localVideo, 0, 0, videoWidth, y, 0, 0, videoWidth, y)
+        ctx.clearRect(0, y + 1, videoWidth, 1)
+        ctx.beginPath()
+        ctx.moveTo(0, y - 1)
+        ctx.lineTo(videoWidth, y - 1)
+        ctx.strokeStyle = "#62e4ff"
+        ctx.lineWidth = 2
+        ctx.closePath()
+        ctx.stroke()
+        ctx.drawImage(localVideo, 0, y, videoWidth, 2, 0, y, videoWidth, 2)
+        stopEffect = window.requestAnimationFrame(drawEffect)
+        y < 0 && stopRecord()
+        y < 0 && window.cancelAnimationFrame(stopEffect)
+    }
+
+    init()
+</script>
+
+</html>
