@@ -1,5 +1,7 @@
 # JS-html5-TikTok-blueline-effect
 html5-js show TikTok blueline effect
+npm i
+npm run dev
 
 #### basic use:
 * 📸 mediaDevices —— get your camera,draw into canvas
