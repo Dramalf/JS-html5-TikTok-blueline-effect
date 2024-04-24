@@ -125,7 +125,7 @@
 
     async function init() {
         console.log('begin')
-        await fetchFFmpeg()
+        //await fetchFFmpeg()
         console.log('over')
         mediaStream = await navigator.mediaDevices.getUserMedia({
             video: true
@@ -191,17 +191,18 @@
         let blob = new Blob(buffer, {
             type: 'video/mp4'
         })
-        const { fetchFile } =FFmpeg
-        const video=document.createElement('video')
-        video.height = videoHeight / 2
-        video.width = videoWidth / 2
-        video.src=URL.createObjectURL(blob)
-        await ffmpeg.FS('writeFile', 'res.mp4',await fetchFile(video.src) );
-        await ffmpeg.run('-i','res.mp4','output.mp4')
-        const data = ffmpeg.FS('readFile', 'output.mp4');
+        //const { fetchFile } =FFmpeg
+        //const video=document.createElement('video')
+        //video.height = videoHeight / 2
+        //video.width = videoWidth / 2
+        //video.src=URL.createObjectURL(blob)
+        //await ffmpeg.FS('writeFile', 'res.mp4',await fetchFile(video.src) );
+        //await ffmpeg.run('-i','res.mp4','output.mp4')
+        //const data = ffmpeg.FS('readFile', 'output.mp4');
         remoteVideo.height = videoHeight / 2
         remoteVideo.width = videoWidth / 2
-        remoteVideo.src = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }))
+        remoteVideo.src = URL.createObjectURL(blob)
+        //remoteVideo.src = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }))
         remoteVideo.constrols = true
         loadingBox.style.display="none"
         remoteVideo.style.display = 'block'
